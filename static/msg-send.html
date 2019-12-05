@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>模拟消息发送</title>
+    <style rel="stylesheet">
+
+        .ms-container {
+            position: relative;
+            left: 50%;
+            top: 100px;
+            width: 500px;
+            transform: translateX(-50%);
+        }
+
+        .ms-container > section {
+            border: 1px solid #b9b7b7;
+            padding: 5px 10px;
+        }
+
+        .ms-container .ms-history {
+            height: 500px;
+            overflow: scroll;
+        }
+
+        .ms-history .ms-history-inner {
+            margin: 5px;
+        }
+
+        .ms-history-inner .ms-history-item {
+            min-height: 100px;
+            width: 100%;
+
+        }
+
+        .ms-history-item .ms-history-item-author {
+            width: 100%;
+        }
+
+        .right .ms-history-item-author-label {
+            float: right;
+        }
+
+        .ms-history-inner .ms-history-item.right > * {
+            float: right;
+        }
+
+        .ms-container .ms-toolkit {
+            height: 35px;
+        }
+
+        .ms-container .ms-text {
+            height: 100px;
+        }
+
+        .ms-text .ms-text-textarea {
+            width: calc(100% - 5px);
+            height: 60px;
+        }
+
+        .ms-text .ms-text-toolkit {
+            height: 40px;
+        }
+
+        .ms-text .ms-text-toolkit .btn-send {
+            float: right;
+            margin: 5px;
+        }
+
+        .btn {
+            min-width: 50px;
+        }
+
+    </style>
+</head>
+<body>
+<div class="ms-container">
+    <section class="ms-history">
+        <div class="ms-history-inner">
+
+        </div>
+    </section>
+
+    <section class="ms-toolkit">
+        <button class="ms-toolkit-img-send J-msBtnImgSend">发送图片</button>
+        <button class="ms-toolkit-notice-send J-msBtnNoticeSend">发送通知</button>
+    </section>
+
+    <section class="ms-text">
+        <textarea autofocus class="ms-text-textarea J-msTextInput"></textarea>
+        <div class="ms-text-toolkit">
+            <button class="btn btn-send J-msBtnTextSend">发送</button>
+        </div>
+    </section>
+</div>
+
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+
+<script>
+
+    const MSG_TYPE_CONFIG = {
+        'text': {
+            type: 'text',
+            isSelf: true,
+            author: '我',
+            template: value => `<div class="ms-history-item-text">${value}</div>`
+        },
+        'image': {
+            type: 'image',
+            isSelf: true,
+            author: '我',
+            template: value => `<div class="ms-history-item-image"><img src="${value}"></div>`
+        },
+        'notice': {
+            type: 'notice',
+            author: '系统',
+            isSelf: false,
+            template: value => `<div class="ms-history-item-notice">${value}</div>`
+        },
+    };
+
+    const wrapperDecorator = ({id, type, value}) => {
+        const {author, isSelf, template} = MSG_TYPE_CONFIG[type];
+        return (
+            `<div data-id="${id}" data-type="${type}" class="ms-history-item${isSelf ? ' right' : ''} J-MsHistoryItem">
+           <div class="ms-history-item-author"><div class="ms-history-item-author-label">${author}</div></div>
+           ${template(value)}
+        </div>`
+        );
+    };
+
+
+    class MsgSend {
+
+        constructor() {
+            this.initVariables();
+            this.bindEvents();
+        }
+
+        initVariables() {
+            this.$sectionHistoryInner = $('.ms-history-inner');
+            this.$sectionToolkit = $('.ms-toolkit');
+            this.$sectionText = $('.ms-text');
+            this.$textInput = this.$sectionText.find('.J-msTextInput');
+            this.$btnTextSend = this.$sectionText.find('.J-msBtnTextSend');
+            this.$btnImgSend = this.$sectionToolkit.find('.J-msBtnImgSend');
+            this.$btnNoticeSend = this.$sectionToolkit.find('.J-msBtnNoticeSend');
+        }
+
+        bindEvents() {
+            const self = this;
+            this.$btnTextSend.on('click', function () {
+                const text = self.$textInput.val();
+                self.sendMsg({type: MSG_TYPE_CONFIG.text.type, value: text});
+                self.$textInput.val('');
+            });
+            this.$btnImgSend.on('click', function () {
+                self.sendMsg({
+                    type: MSG_TYPE_CONFIG.image.type,
+                    value: 'https://www.gravatar.com/avatar/161d903d6c5bd2e097a2de4e3859173d'
+                });
+            });
+            this.$btnNoticeSend.on('click', function () {
+                self.sendMsg({
+                    type: MSG_TYPE_CONFIG.notice.type,
+                    value: '这是系统信息'
+                });
+            });
+
+            this.$textInput.on('input', function () {
+                if (!$.trim(self.$textInput.val()).length) {
+                    self.$btnTextSend.prop('disabled', true);
+                } else {
+                    self.$btnTextSend.prop('disabled', false);
+                }
+            }).trigger('input');
+
+            this.$sectionHistoryInner.on('contextmenu', '.J-MsHistoryItem', function () {
+                const $this = $(this);
+                if (MSG_TYPE_CONFIG[$this.data('type')].isSelf) {
+                    alert('已撤回信息');
+                    $this.remove();
+                } else {
+                    alert('该消息无法撤回');
+                }
+                return false;
+            })
+
+        }
+
+
+        sendMsg = ({type, value}) => {
+
+            const config = MSG_TYPE_CONFIG[type];
+
+            if (!config) {
+                throw new RangeError('msg type is not existed!');
+            }
+
+            const payload = {
+                id: +new Date(),
+                type,
+                value,
+            };
+
+            const $target = $(wrapperDecorator(payload));
+            this.$sectionHistoryInner.append($target)
+            $target[0].scrollIntoView();
+        };
+    }
+
+    new MsgSend();
+
+</script>
+
+</body>
+</html>
